@@ -37,8 +37,8 @@
   </div>
 
   <script>
-    // ✅ Use your Web App URL here
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwdCiUWH9ckW1RggFSnlb3RZzyhkn80fxOPsU5BCBinStucX0nrVrWHvJPu23oZc28t/exec";
+    // 🔗 Your new Web App URL
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxiDHBWPK_w6nFzhtb8em8q22BjebsqrZVZjGqIXoNFHE0r-enEmO5E5SeUbfZZ8Qy3/exec";
 
     const form = document.getElementById('regForm');
     const msg = document.getElementById('msg');
@@ -61,14 +61,15 @@
           body: JSON.stringify(payload)
         });
 
-        const text = await res.text(); // Apps Script may return plain text
-        if (text.includes("Success")) {
+        const json = await res.json();
+
+        if (json.status === "success") {
           msg.style.color = "green";
           msg.textContent = "Submitted ✅";
           form.reset();
         } else {
           msg.style.color = "red";
-          msg.textContent = "Error: " + text;
+          msg.textContent = "Error: " + json.message;
         }
       } catch (err) {
         msg.style.color = "red";
