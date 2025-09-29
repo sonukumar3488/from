@@ -1,81 +1,245 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Registration Form</title>
+  <title>Web Tech Exam with Google Sheets Storage</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: Arial, sans-serif; background:#f2f6fb; padding:24px; }
-    .card { max-width:420px; margin:30px auto; background:#fff; border-radius:10px; padding:20px; box-shadow:0 6px 18px rgba(0,0,0,0.08); }
-    label { display:block; margin:8px 0 6px; }
-    input, select { width:100%; padding:10px; margin-bottom:12px; border-radius:6px; border:1px solid #d7e1ef; box-sizing:border-box; }
-    button { width:100%; padding:12px; background:#1976d2; color:#fff; border:none; border-radius:8px; cursor:pointer; }
-    #msg { margin-top:12px; text-align:center; font-weight:600; }
+    body { font-family: Arial, sans-serif; background: #f4f7fb; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+    .card { background: white; padding: 18px; border-radius: 8px; box-shadow: 0 6px 18px rgba(20,30,50,0.06); max-width: 700px; width: 100%; margin-top: 20px; }
+    h1 { margin-top: 0; }
+    label { display: block; margin: 8px 0 4px; font-weight: 600; }
+    input { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #d2d8e0; }
+    button { padding: 10px 14px; border-radius: 6px; border: none; cursor: pointer; margin: 8px 4px; }
+    .btn-start { background: #0b76ef; color: white; }
+    .btn-capture { background: #0bbf7e; color: white; }
+    .btn-nav { background: #e6edf8; color: #0b76ef; }
+    video { width: 320px; border-radius: 8px; border: 1px solid #cfd9ea; }
+    .hidden { display: none; }
+    .question { margin-bottom: 16px; padding: 12px; border-radius: 8px; border: 1px solid #eef2fb; }
+    .qnav { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+    .result { font-weight: 700; padding: 12px; margin-top: 12px; border-radius: 8px; }
+    .pass { background: #e6ffef; color: #0b6b3a; }
+    .fail { background: #fff0f0; color: #7a1515; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>Registration</h2>
-    <form id="regForm">
-      <label>Name</label>
-      <input id="name" type="text" required />
 
-      <label>Age</label>
-      <input id="age" type="number" min="1" max="120" required />
-
-      <label>Gender</label>
-      <select id="gender" required>
-        <option value="">Select</option>
-        <option>Male</option>
-        <option>Female</option>
-        <option>Other</option>
-      </select>
-
-      <button type="submit">Submit</button>
-    </form>
-
-    <div id="msg"></div>
+  <div class="card" id="introCard">
+    <h1>Web Tech Exam (10 MCQs)</h1>
+    <label for="name">Name</label><input id="name" type="text" />
+    <label for="class">Class / Section</label><input id="class" type="text" />
+    <label for="mobile">Mobile</label><input id="mobile" type="text" />
+    <label><input type="checkbox" id="consent"> I consent that my photo and answers will be stored.</label>
+    <button id="startBtn" class="btn-start">Start Test</button>
   </div>
 
-  <script>
-    // 🔗 Your new Web App URL
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxiDHBWPK_w6nFzhtb8em8q22BjebsqrZVZjGqIXoNFHE0r-enEmO5E5SeUbfZZ8Qy3/exec";
+  <div class="card hidden" id="cameraCard">
+    <h2>Capture Your Photo</h2>
+    <video id="video" autoplay playsinline></video><br />
+    <button id="captureBtn" class="btn-capture">Capture Photo</button>
+    <canvas id="canvas" class="hidden"></canvas><br />
+    <button id="usePhotoBtn" class="btn-start hidden">Submit Photo & Begin Test</button>
+  </div>
 
-    const form = document.getElementById('regForm');
-    const msg = document.getElementById('msg');
+  <div class="card hidden" id="examCard">
+    <h2>MCQ Section</h2>
+    <div id="questionContainer"></div>
+    <div class="qnav">
+      <div>
+        <button id="prevQ" class="btn-nav">Previous</button>
+        <button id="nextQ" class="btn-nav">Next</button>
+      </div>
+      <div>
+        <button id="submitExam" class="btn-start">Submit Exam</button>
+      </div>
+    </div>
+    <div id="resultBox" class="result hidden"></div>
+  </div>
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      msg.style.color = "black";
-      msg.textContent = "Submitting...";
+<script>
+  // ========== Configuration ================
+  const SCRIPT_URL = "YOUR_SCRIPT_URL_HERE";  // replace this with your Apps Script web app URL
 
-      const payload = {
-        name: document.getElementById('name').value.trim(),
-        age: document.getElementById('age').value.trim(),
-        gender: document.getElementById('gender').value
-      };
+  // Demo questions
+  const questions = [
+    { q:"HTML stands for?", opts:{A:"HyperText Markup Language",B:"HighText Markup Language",C:"Hyperlinking Text Markup"}, answer:"A" },
+    { q:"How to link CSS file?", opts:{A:"<style>",B:"<link>",C:"<css>"}, answer:"B" },
+    { q:"Console log method in JS?", opts:{A:"print()",B:"console.log()",C:"echo()"}, answer:"B" },
+    { q:"Secure version of HTTP is?", opts:{A:"FTP",B:"HTTPS",C:"SMTP"}, answer:"B" },
+    { q:"Which is not JS framework?", opts:{A:"React",B:"Laravel",C:"Vue"}, answer:"B" },
+    { q:"CSS property for text color?", opts:{A:"font-color",B:"color",C:"text-color"}, answer:"B" },
+    { q:"Inline style attribute is?", opts:{A:"class",B:"id",C:"style"}, answer:"C" },
+    { q:"Tag for strong text?", opts:{A:"<strong>",B:"<i>",C:"<small>"}, answer:"A" },
+    { q:"Ordered list tag?", opts:{A:"<ol>",B:"<ul>",C:"<li>"}, answer:"A" },
+    { q:"Install npm packages via?", opts:{A:"npm install",B:"npm run",C:"npm start"}, answer:"A" }
+  ];
 
-      try {
-        const res = await fetch(WEB_APP_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+  // ========== State Variables ==============
+  let student = { name:"", class:"", mobile:"" };
+  let answers = {};  // store selected answers
+  let currentIndex = 0;
+  let capturedPhotoBase64 = "";
 
-        const json = await res.json();
+  // ========== UI Elements ================
+  const introCard = document.getElementById("introCard");
+  const startBtn = document.getElementById("startBtn");
+  const consent = document.getElementById("consent");
+  const cameraCard = document.getElementById("cameraCard");
+  const video = document.getElementById("video");
+  const captureBtn = document.getElementById("captureBtn");
+  const canvas = document.getElementById("canvas");
+  const usePhotoBtn = document.getElementById("usePhotoBtn");
+  const examCard = document.getElementById("examCard");
+  const questionContainer = document.getElementById("questionContainer");
+  const prevQ = document.getElementById("prevQ");
+  const nextQ = document.getElementById("nextQ");
+  const submitExam = document.getElementById("submitExam");
+  const resultBox = document.getElementById("resultBox");
 
-        if (json.status === "success") {
-          msg.style.color = "green";
-          msg.textContent = "Submitted ✅";
-          form.reset();
-        } else {
-          msg.style.color = "red";
-          msg.textContent = "Error: " + json.message;
-        }
-      } catch (err) {
-        msg.style.color = "red";
-        msg.textContent = "Network / CORS error: " + err.message;
+  // ========== Handlers ===============
+
+  startBtn.onclick = async () => {
+    student.name = document.getElementById("name").value.trim();
+    student.class = document.getElementById("class").value.trim();
+    student.mobile = document.getElementById("mobile").value.trim();
+    if (!student.name) {
+      alert("Please enter your name");
+      return;
+    }
+    if (!consent.checked) {
+      alert("You must give consent to save data.");
+      return;
+    }
+    if (!confirm("Once you start the test and capture photo, you cannot go back. Proceed?")) {
+      return;
+    }
+    // Show camera UI
+    introCard.classList.add("hidden");
+    cameraCard.classList.remove("hidden");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+    } catch (err) {
+      alert("Could not access camera. Please allow permission.");
+      console.error(err);
+    }
+  };
+
+  captureBtn.onclick = () => {
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext("2d").drawImage(video, 0, 0, w, h);
+    capturedPhotoBase64 = canvas.toDataURL("image/jpeg", 0.9); // string like "data:image/jpeg;base64,...."
+    canvas.classList.remove("hidden");
+    usePhotoBtn.classList.remove("hidden");
+  };
+
+  usePhotoBtn.onclick = () => {
+    // stop the camera (optional)
+    if (video.srcObject) {
+      video.srcObject.getTracks().forEach(t => t.stop());
+    }
+    cameraCard.classList.add("hidden");
+    examCard.classList.remove("hidden");
+    buildQuestions();
+  };
+
+  function buildQuestions() {
+    questionContainer.innerHTML = "";
+    questions.forEach((qs, idx) => {
+      const div = document.createElement("div");
+      div.className = "question";
+      div.id = "q" + idx;
+      div.innerHTML = `<strong>Q${idx+1}. ${escapeHtml(qs.q)}</strong><br>`;
+      for (const opt in qs.opts) {
+        div.innerHTML += `<label><input type="radio" name="q${idx}" value="${opt}"> ${opt}. ${escapeHtml(qs.opts[opt])}</label><br>`;
       }
+      div.style.display = (idx === 0 ? "block" : "none");
+      questionContainer.appendChild(div);
     });
-  </script>
+    currentIndex = 0;
+    updateNav();
+  }
+
+  function showQuestion(i) {
+    document.getElementById("q" + currentIndex).style.display = "none";
+    document.getElementById("q" + i).style.display = "block";
+    currentIndex = i;
+    updateNav();
+  }
+
+  prevQ.onclick = () => {
+    saveAnswer();
+    if (currentIndex > 0) showQuestion(currentIndex - 1);
+  };
+  nextQ.onclick = () => {
+    saveAnswer();
+    if (currentIndex < questions.length - 1) showQuestion(currentIndex + 1);
+  };
+
+  function updateNav() {
+    prevQ.disabled = (currentIndex === 0);
+    nextQ.disabled = (currentIndex === questions.length - 1);
+  }
+
+  function saveAnswer() {
+    const selected = document.querySelector(`input[name=q${currentIndex}]:checked`);
+    if (selected) {
+      answers[currentIndex] = selected.value;
+    }
+  }
+
+  submitExam.onclick = async () => {
+    saveAnswer();
+    let correctCount = 0;
+    questions.forEach((qs, idx) => {
+      if (answers[idx] && answers[idx] === qs.answer) correctCount++;
+    });
+    const score = correctCount * 10;
+    const result = (correctCount >= 5) ? "Pass" : "Fail";
+
+    // Show result
+    resultBox.classList.remove("hidden");
+    resultBox.className = "result " + (result === "Pass" ? "pass" : "fail");
+    resultBox.innerHTML = `${student.name}, you ${result}! Score: ${score}/100<br><img src="${capturedPhotoBase64}" width="120" />`;
+
+    // Prepare payload to send to Sheets
+    const payload = {
+      name: student.name,
+      class: student.class,
+      mobile: student.mobile,
+      score: score,
+      result: result,
+      answers: answers,
+      photoBase64: capturedPhotoBase64
+    };
+
+    // Send to Google Apps Script
+    try {
+      const resp = await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      const respJson = await resp.json();
+      console.log("Sheet response:", respJson);
+    } catch (err) {
+      console.error("Error sending to sheets:", err);
+    }
+  };
+
+  // Escape HTML utility
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+</script>
+
 </body>
 </html>
